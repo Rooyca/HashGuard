@@ -33,8 +33,13 @@ Variable | Description | Default
 `DATABASE_NAME` | The name of the database | `file_integrity.db`
 `CONFIG_APPRISE` | The Apprise configuration file | `./config.yml`
 
+## TODO
 
-[license-shield]: https://img.shields.io/github/license/rooyca/HashGuard.svg?style=
+- [ ] Add support for multiple directories
+- [x] Add mini-dashboard
+
+
+[license-shield]: https://img.shields.io/github/license/rooyca/HashGuard.svg
 [license-url]: https://github.com/rooyca/HashGuard/blob/master/LICENSE
-[version-shield]: https://img.shields.io/badge/Version-0.0.1-blue.svg
+[version-shield]: https://img.shields.io/badge/Version-0.0.2-blue.svg
 [version-url]: https://github.com/rooyca/HashGuard

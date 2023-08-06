@@ -5,13 +5,15 @@ import watchdog
 
 from datetime import datetime
 from watchdog.observers import Observer
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.templating import Jinja2Templates
 from db import *
 from notify import *
 
 FILES_DIRECTORY = os.getenv("FILES_DIRECTORY", "./monito")
 
 app = FastAPI()
+templates = Jinja2Templates(directory="templates")
 
 def calculate_hash(file_path):
     with open(file_path, "rb") as file:
@@ -23,16 +25,25 @@ def calculate_hash(file_path):
 def on_modified(event):
     if event.is_directory:
         return
+
     apobj.notify(
-    body=f"""👀 Name: {event.src_path}
-#️⃣ Hash: {calculate_hash(event.src_path)}
-⏰ Date: {str(datetime.now())}""",
+    body=f"👀 Name: {event.src_path}\n#️⃣ Hash: {calculate_hash(event.src_path)}\n⏰ Date: {str(datetime.now())}",
     title='⚠️ == File Modified == ⚠️'
     )
 
+    path = event.src_path
+    filename = os.path.basename(path)
+    hash_value = calculate_hash(path)
+    file_info = get_file(filename, path)
+    if not file_info:
+        insert_file(filename, path, hash_value)
+    if file_info[3] != hash_value:
+        update_file(filename, path, hash_value)
+
 @app.get("/")
-def read_root():
-    return {"message": "Welcome to the file integrity monitoring system."}
+def dashboard(request: Request):
+    files_data = get_files()
+    return templates.TemplateResponse("dashboard.html", {"request": request, "files_data": files_data})
 
 @app.get("/files/{filename:path}")
 def read_file(filename: str):
@@ -46,9 +57,17 @@ def read_file(filename: str):
 
     if file_info[3] != hash_value:
         update_file(filename, path, hash_value)
-        return {"status": "File Modified", "filename": filename, "path": path, "hash": hash_value}
+        return {"status": "File Modified", "filename": filename, "path": path, "hash": hash_value, "old_hash": file_info[4], "last_modified": file_info[5]}
 
-    return {"status": "OK.","filename": filename, "path": path, "hash": hash_value}
+    return {"status": "OK.","filename": filename, "path": path, "hash": hash_value, "old_hash": file_info[4], "last_modified": file_info[5]}
+
+@app.get("/files")
+def read_files():
+    files = get_files()
+    files_final = []
+    for i in files:
+        files_final.append({"filename": i[1], "path": i[2], "hash": i[3], "old_hash": i[4], "last_modified": i[5]})
+    return {"files": files_final}
 
 if __name__ == "__main__":
     create_table()

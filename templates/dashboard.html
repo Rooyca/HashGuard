@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mini Dashboard</title>
+    <style>
+        table {
+            width: 70%;
+            margin: 0 auto;
+            border-collapse: collapse;
+        }
+
+        th {
+            width: 20%;
+            padding: 8px;
+            text-align: left;
+            border-bottom: 2px solid #ddd;
+        }
+
+        td {
+            width: 20%;
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        body {
+            background-color: #333;
+            color: #f0f0f0;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>🛡️ HashGuard 🛡️</h1>
+
+    <table >
+        <thead>
+        <tr>
+            <th>Filename</th>
+            <th>Path</th>
+            <th>Current Hash</th>
+            <th>Old Hash</th>
+            <th>Last Modified</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for file_data in files_data %}
+        <tr>
+            <td style="color:lightblue;">{{ file_data[1] }}</td>
+            <td>{{ file_data[2] }}</td>
+            <td style="color:lightgreen;">{{ file_data[3] }}</td>
+            <td style="color:lightsalmon;">{{ file_data[4] }}</td>
+            <td>{{ file_data[5] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

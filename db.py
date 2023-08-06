@@ -11,6 +11,7 @@ def create_table():
                        filename TEXT,
                        path TEXT,
                        hash TEXT,
+                       old_hash TEXT DEFAULT NULL,
                        last_modified TIMESTAMP)''')
     conn.commit()
     conn.close()
@@ -26,8 +27,9 @@ def insert_file(filename, path, hash_value):
 def update_file(filename, path, hash_value):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("UPDATE files SET hash = ?, last_modified = ? WHERE filename = ? AND path = ?",
-                   (hash_value, datetime.now(), filename, path))
+    old_hash = cursor.execute("SELECT hash FROM files WHERE filename = ? AND path = ?", (filename, path)).fetchone()[0]
+    cursor.execute("UPDATE files SET hash = ?, last_modified = ?, old_hash = ? WHERE filename = ? AND path = ?",
+                   (hash_value, datetime.now(), old_hash, filename, path))
     conn.commit()
     conn.close()
 
@@ -36,5 +38,13 @@ def get_file(filename, path):
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM files WHERE filename = ? AND path = ?", (filename, path))
     result = cursor.fetchone()
+    conn.close()
+    return result
+
+def get_files():
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM files")
+    result = cursor.fetchall()
     conn.close()
     return result
