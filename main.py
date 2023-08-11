@@ -37,13 +37,31 @@ def on_modified(event):
     file_info = get_file(filename, path)
     if not file_info:
         insert_file(filename, path, hash_value)
-    if file_info[3] != hash_value:
+    if file_info.hash != hash_value:
         update_file(filename, path, hash_value)
+
+def first_run():
+    for root, dirs, files in os.walk(FILES_DIRECTORY):
+        for file in files:
+            path = os.path.join(root, file)
+            hash_value = calculate_hash(path)
+            file_info = get_file(file, path)
+            if not file_info:
+                insert_file(file, path, hash_value)
+            if file_info.hash != hash_value:
+                update_file(file, path, hash_value)
 
 @app.get("/")
 def dashboard(request: Request):
-    files_data = get_files()
-    return templates.TemplateResponse("dashboard.html", {"request": request, "files_data": files_data})
+    files = get_files()
+    files_final = []
+    for i in files:
+        files_final.append({"filename": i.filename, 
+                            "path": i.path, 
+                            "hash": i.hash, 
+                            "old_hash": i.old_hash,
+                            "last_modified": i.last_modified})
+    return templates.TemplateResponse("dashboard.html", {"request": request, "files_data": files_final})
 
 @app.get("/files/{filename:path}")
 def read_file(filename: str):
@@ -55,18 +73,22 @@ def read_file(filename: str):
     if not file_info:
         insert_file(filename, path, hash_value)
 
-    if file_info[3] != hash_value:
+    if file_info.hash != hash_value:
         update_file(filename, path, hash_value)
         return {"status": "File Modified", "filename": filename, "path": path, "hash": hash_value, "old_hash": file_info[4], "last_modified": file_info[5]}
 
-    return {"status": "OK.","filename": filename, "path": path, "hash": hash_value, "old_hash": file_info[4], "last_modified": file_info[5]}
+    return {"status": "OK.","filename": filename, "path": path, "hash": hash_value, "old_hash": file_info.old_hash, "last_modified": file_info.last_modified}
 
 @app.get("/files")
 def read_files():
     files = get_files()
     files_final = []
     for i in files:
-        files_final.append({"filename": i[1], "path": i[2], "hash": i[3], "old_hash": i[4], "last_modified": i[5]})
+        files_final.append({"filename": i.filename, 
+                            "path": i.path, 
+                            "hash": i.hash, 
+                            "old_hash": i.old_hash,
+                            "last_modified": i.last_modified})
     return {"files": files_final}
 
 if __name__ == "__main__":
@@ -78,6 +100,7 @@ if __name__ == "__main__":
     observer.start()
 
     try:
+        first_run()
         uvicorn.run(app, host="0.0.0.0", port=8000)
     except KeyboardInterrupt:
         observer.stop()
