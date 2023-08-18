@@ -4,3 +4,4 @@ watchdog==3.0.0
 sqlalchemy==2.0.19
 apprise==1.4.5
 jinja2==3.1.2
+Werkzeug==2.3.7

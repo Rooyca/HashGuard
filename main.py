@@ -2,6 +2,7 @@ import os
 import hashlib
 import uvicorn
 import watchdog
+import werkzeug
 
 from datetime import datetime
 from watchdog.observers import Observer
@@ -37,8 +38,11 @@ def on_modified(event):
     file_info = get_file(filename, path)
     if not file_info:
         insert_file(filename, path, hash_value)
-    if file_info.hash != hash_value:
-        update_file(filename, path, hash_value)
+    try:
+        if file_info.hash != hash_value:
+            update_file(filename, path, hash_value)
+    except:
+        pass
 
 def first_run():
     for root, dirs, files in os.walk(FILES_DIRECTORY):
@@ -63,21 +67,24 @@ def dashboard(request: Request):
                             "last_modified": i.last_modified})
     return templates.TemplateResponse("dashboard.html", {"request": request, "files_data": files_final})
 
+
 @app.get("/files/{filename:path}")
 def read_file(filename: str):
-    path = os.path.join(FILES_DIRECTORY, filename)
+    secure_filename = werkzeug.utils.secure_filename(filename)
+    print(secure_filename)
+    path = os.path.join(FILES_DIRECTORY, secure_filename)
     if not os.path.isfile(path):
         raise HTTPException(status_code=404, detail="File not found.")
     hash_value = calculate_hash(path)
-    file_info = get_file(filename, path)
+    file_info = get_file(secure_filename, path)
     if not file_info:
-        insert_file(filename, path, hash_value)
+        insert_file(secure_filename, path, hash_value)
 
     if file_info.hash != hash_value:
-        update_file(filename, path, hash_value)
-        return {"status": "File Modified", "filename": filename, "path": path, "hash": hash_value, "old_hash": file_info[4], "last_modified": file_info[5]}
+        update_file(secure_filename, path, hash_value)
+        return {"status": "File Modified", "filename": secure_filename, "path": path, "hash": hash_value, "old_hash": file_info[4], "last_modified": file_info[5]}
 
-    return {"status": "OK.","filename": filename, "path": path, "hash": hash_value, "old_hash": file_info.old_hash, "last_modified": file_info.last_modified}
+    return {"status": "OK.","filename": secure_filename, "path": path, "hash": hash_value, "old_hash": file_info.old_hash, "last_modified": file_info.last_modified}
 
 @app.get("/files")
 def read_files():
