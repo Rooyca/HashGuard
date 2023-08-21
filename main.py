@@ -9,7 +9,7 @@ from watchdog.observers import Observer
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from db import *
-from notify import *
+from notify import apobj
 
 FILES_DIRECTORY = os.getenv("FILES_DIRECTORY", "./monito")
 
@@ -56,6 +56,18 @@ def first_run():
                 update_file(file, path, hash_value)
 
 @app.get("/")
+def json_data():
+    files = get_files()
+    files_final = []
+    for i in files:
+        files_final.append({"filename": i.filename, 
+                            "path": i.path, 
+                            "hash": i.hash, 
+                            "old_hash": i.old_hash,
+                            "last_modified": i.last_modified})
+    return {"files": files_final}
+
+@app.get("/board")
 def dashboard(request: Request):
     files = get_files()
     files_final = []
