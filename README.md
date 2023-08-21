@@ -37,6 +37,8 @@ Variable | Description | Default
 
 - [ ] Add support for multiple directories
 - [x] Add mini-dashboard
+- [ ] Move dashboard to `/dashboard`
+- [ ] JSON response in `/` route
 
 
 [license-shield]: https://img.shields.io/github/license/rooyca/HashGuard.svg
