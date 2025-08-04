@@ -1,69 +1,155 @@
-from sqlalchemy import create_engine, Column, String, Integer, DateTime
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from datetime import datetime
+import sqlite3
 import os
+from datetime import datetime
+from typing import Optional
 
-DATABASE_URL = "sqlite:///" + os.getenv("DATABASE_URL", "file_integrity.db")
+# Database path - matches your original logic
+DATABASE_URL = os.getenv("DATABASE_URL", "file_integrity.db")
+# Remove sqlite:/// prefix if present to get just the filename
+if DATABASE_URL.startswith("sqlite:///"):
+    DATABASE_URL = DATABASE_URL[10:]
 
-Base = declarative_base()
-engine = create_engine(DATABASE_URL)
+class File:
+    """File class that mimics SQLAlchemy model behavior"""
+    def __init__(self, id=None, filename=None, path=None, hash=None, old_hash=None, last_modified=None):
+        self.id = id
+        self.filename = filename
+        self.path = path
+        self.hash = hash
+        self.old_hash = old_hash
+        self.last_modified = last_modified
 
-class File(Base):
-    __tablename__ = 'files'
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    filename = Column(String)
-    path = Column(String)
-    hash = Column(String)
-    old_hash = Column(String, default=None)
-    last_modified = Column(DateTime)
+def get_connection():
+    """Get database connection"""
+    return sqlite3.connect(DATABASE_URL)
 
 def create_table():
-    Base.metadata.create_all(engine)
+    """Create the files table if it doesn't exist"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS files (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT,
+            path TEXT,
+            hash TEXT,
+            old_hash TEXT DEFAULT NULL,
+            last_modified TIMESTAMP
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
 
 def insert_file(filename, path, hash_value):
-    Session = sessionmaker(bind=engine)
-    session = Session()
-
-    file_data = File(
-        filename=filename,
-        path=path,
-        hash=hash_value,
-        last_modified=datetime.now()
-    )
-
-    session.add(file_data)
-    session.commit()
-    session.close()
+    """Insert a new file record"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        INSERT INTO files (filename, path, hash, last_modified)
+        VALUES (?, ?, ?, ?)
+    ''', (filename, path, hash_value, datetime.now()))
+    
+    conn.commit()
+    conn.close()
 
 def update_file(filename, path, hash_value):
-    Session = sessionmaker(bind=engine)
-    session = Session()
-
-    file_data = session.query(File).filter_by(filename=filename, path=path).first()
-    if file_data:
-        file_data.old_hash = file_data.hash
-        file_data.hash = hash_value
-        file_data.last_modified = datetime.now()
-
-        session.commit()
-    session.close()
+    """Update file hash and set old_hash"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # First get the current hash to store as old_hash
+    cursor.execute('SELECT hash FROM files WHERE filename = ? AND path = ?', (filename, path))
+    result = cursor.fetchone()
+    
+    if result:
+        old_hash = result[0]
+        cursor.execute('''
+            UPDATE files 
+            SET hash = ?, old_hash = ?, last_modified = ?
+            WHERE filename = ? AND path = ?
+        ''', (hash_value, old_hash, datetime.now(), filename, path))
+        
+        conn.commit()
+    
+    conn.close()
 
 def get_file(filename, path):
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    """Get a specific file record - returns File object or None"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT id, filename, path, hash, old_hash, last_modified
+        FROM files 
+        WHERE filename = ? AND path = ?
+    ''', (filename, path))
+    
+    result = cursor.fetchone()
+    conn.close()
+    
+    if result:
+        # Convert timestamp string back to datetime if needed
+        last_modified = result[5]
+        if isinstance(last_modified, str):
+            try:
+                last_modified = datetime.fromisoformat(last_modified.replace('Z', '+00:00'))
+            except:
+                last_modified = datetime.now()
+        
+        return File(
+            id=result[0],
+            filename=result[1],
+            path=result[2],
+            hash=result[3],
+            old_hash=result[4],
+            last_modified=last_modified
+        )
+    return None
 
-    file_data = session.query(File).filter_by(filename=filename, path=path).first()
-
-    session.close()
-    return file_data
+def delete_file(path):
+    """Delete a file record from database"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('DELETE FROM files WHERE path = ?', (path,))
+    conn.commit()
+    conn.close()
+    print(f"Removed file record: {path}")
 
 def get_files():
-    Session = sessionmaker(bind=engine)
-    session = Session()
-
-    result = session.query(File).all()
-
-    session.close()
-    return result
+    """Get all file records - returns list of File objects"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT id, filename, path, hash, old_hash, last_modified
+        FROM files
+        ORDER BY last_modified DESC
+    ''')
+    
+    results = cursor.fetchall()
+    conn.close()
+    
+    files = []
+    for row in results:
+        # Convert timestamp string back to datetime if needed
+        last_modified = row[5]
+        if isinstance(last_modified, str):
+            try:
+                last_modified = datetime.fromisoformat(last_modified.replace('Z', '+00:00'))
+            except:
+                last_modified = datetime.now()
+        
+        files.append(File(
+            id=row[0],
+            filename=row[1],
+            path=row[2],
+            hash=row[3],
+            old_hash=row[4],
+            last_modified=last_modified
+        ))
+    
+    return files

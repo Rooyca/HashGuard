@@ -4,52 +4,182 @@
     <title>Mini Dashboard</title>
     <style>
         table {
-            width: 70%;
+            width: 90%;
             margin: 0 auto;
             border-collapse: collapse;
+            font-family: 'Courier New', monospace;
         }
-
         th {
-            width: 20%;
-            padding: 8px;
+            padding: 12px 8px;
             text-align: left;
-            border-bottom: 2px solid #ddd;
+            border-bottom: 2px solid #555;
+            background-color: #444;
+            font-weight: bold;
         }
-
         td {
-            width: 20%;
-            padding: 8px;
-            border-bottom: 1px solid #ddd;
+            padding: 10px 8px;
+            border-bottom: 1px solid #555;
+            vertical-align: top;
         }
-
         body {
-            background-color: #333;
+            background-color: #222;
             color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
         }
-
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 30px;
+        }
+        .hash-cell {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .hash-truncated {
+            display: inline;
+        }
+        .filename {
+            color: #87CEEB;
+            font-weight: bold;
+        }
+        .path {
+            color: #DDA0DD;
+            font-size: 12px;
+            max-width: 250px;
+            word-break: break-word;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .current-hash {
+            color: #90EE90;
+        }
+        .old-hash {
+            color: #F0A0A0;
+        }
+        .modified-date {
+            color: #FFE4B5;
+            font-size: 11px;
+        }
+        .no-hash {
+            color: #888;
+            font-style: italic;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-unchanged {
+            background-color: #4CAF50;
+        }
+        .status-modified {
+            background-color: #FF6B6B;
+        }
+        .status-new {
+            background-color: #4ECDC4;
+        }
+        .event-info {
+            font-size: 10px;
+            color: #888;
+            margin-top: 2px;
+        }
+        .stats-summary {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .stat-item {
+            display: inline-block;
+            margin: 0 15px;
+            padding: 8px 16px;
+            background-color: #444;
+            border-radius: 6px;
+            border-left: 4px solid #4CAF50;
+        }
     </style>
 </head>
 <body>
-    <h1>🛡️ HashGuard 🛡️</h1>
-
-    <table >
+    <h1>🛡️ HashGuard Dashboard 🛡️</h1>
+    
+    <!-- Statistics Summary -->
+    <div style="text-align: center; margin-bottom: 20px;">
+        <div style="display: inline-block; margin: 0 20px; padding: 10px 20px; background-color: #333; border-radius: 8px;">
+            <span style="color: #4ECDC4;">📊 Files Monitored: </span>
+            <span style="color: white; font-weight: bold;">{{ files_data|length }}</span>
+        </div>
+        <div style="display: inline-block; margin: 0 20px; padding: 10px 20px; background-color: #333; border-radius: 8px;">
+            <span style="color: #90EE90;">🆕 New Files: </span>
+            <span style="color: white; font-weight: bold;">{{ files_data | selectattr('old_hash', 'none') | list | length }}</span>
+        </div>
+        <div style="display: inline-block; margin: 0 20px; padding: 10px 20px; background-color: #333; border-radius: 8px;">
+            <span style="color: #FF6B6B;">🔄 Modified: </span>
+            <span style="color: white; font-weight: bold;">{{ files_data | selectattr('old_hash') | rejectattr('hash', 'equalto', files_data[0].old_hash if files_data else '') | list | length }}</span>
+        </div>
+        <div style="display: inline-block; margin: 0 20px; padding: 10px 20px; background-color: #333; border-radius: 8px;">
+            <span style="color: #DDA0DD;">📁 Directories: </span>
+            <span style="color: white; font-weight: bold;">{{ monitored_directories|length }}</span>
+        </div>
+    </div>
+    <table>
         <thead>
         <tr>
-            <th>Filename</th>
-            <th>Path</th>
-            <th>Current Hash</th>
-            <th>Old Hash</th>
-            <th>Last Modified</th>
+            <th style="width: 12%;">Status</th>
+            <th style="width: 15%;">Filename</th>
+            <th style="width: 15%;">Path</th>
+            <th style="width: 18%;">Current Hash</th>
+            <th style="width: 18%;">Old Hash</th>
+            <th style="width: 20%;">Last Modified</th>
         </tr>
         </thead>
         <tbody>
         {% for file_data in files_data %}
         <tr>
-            <td style="color:lightblue;">{{ file_data.filename }}</td>
-            <td>{{ file_data.path }}</td>
-            <td style="color:lightgreen;">{{ file_data.hash }}</td>
-            <td style="color:lightsalmon;">{{ file_data.old_hash }}</td>
-            <td>{{ file_data.last_modified }}</td>
+            <td>
+                {% if file_data.old_hash and file_data.hash != file_data.old_hash %}
+                    <span class="status-indicator status-modified"></span>Modified
+                {% elif not file_data.old_hash %}
+                    <span class="status-indicator status-new"></span>New
+                {% else %}
+                    <span class="status-indicator status-unchanged"></span>Unchanged
+                {% endif %}
+            </td>
+            <td class="filename">{{ file_data.filename }}</td>
+            <td class="path" title="{{ file_data.path }}">{{ file_data.relative_path }}</td>
+            <td class="hash-cell current-hash">
+                {% if file_data.hash %}
+                    <div class="hash-truncated">
+                        {{ file_data.hash[:8] }}...{{ file_data.hash[-8:] }}
+                    </div>
+                {% else %}
+                    <span class="no-hash">No hash</span>
+                {% endif %}
+            </td>
+            <td class="hash-cell old-hash">
+                {% if file_data.old_hash %}
+                    <div class="hash-truncated">
+                        {{ file_data.old_hash[:8] }}...{{ file_data.old_hash[-8:] }}
+                    </div>
+                {% else %}
+                    <span class="no-hash">No previous hash</span>
+                {% endif %}
+            </td>
+            <td class="modified-date">
+                {% if file_data.last_modified %}
+                    {{ file_data.last_modified.strftime('%Y-%m-%d %H:%M:%S') if file_data.last_modified.strftime else file_data.last_modified }}
+                {% else %}
+                    <span class="no-hash">Unknown</span>
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
         </tbody>

@@ -29,16 +29,18 @@ The following variables can be modified to customize the application:
 
 Variable | Description | Default
 --- | --- | ---
-`FILES_DIRECTORY` | The directory to be monitored | `./monito`
+`FILES_DIRECTORIES` | The directories to be monitored | `./test_dir`
 `DATABASE_NAME` | The name of the database | `file_integrity.db`
 `CONFIG_APPRISE` | The Apprise configuration file | `./config.yml`
 
 ## TODO
 
-- [ ] Add support for multiple directories
+- [x] Add support for multiple directories
 - [x] Add mini-dashboard
-- [x] Move dashboard to `/board`
+- [x] Move dashboard to `/dash`
 - [x] JSON response in `/` route
+- [x] Add stats
+- [x] Add support for monitoring new, moved, and deleted files
 
 
 [license-shield]: https://img.shields.io/github/license/rooyca/HashGuard.svg
